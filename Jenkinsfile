@@ -1,50 +1,103 @@
 pipeline{
     agent any
+    
     tools {
-      maven 'maven3'
+     maven 'MAVEN'
     }
-    environment {
-      DOCKER_TAG = getVersion()
-    }
-    stages{
-        stage('SCM'){
+     
+     stages{
+        
+        stage('CHECKOUT SCM CODE'){
             steps{
-                git credentialsId: 'github', 
-                    url: 'https://github.com/javahometech/dockeransiblejenkins'
+                 git 'https://github.com/SOFTWARESOLUTONS-PVT-LIMITED/KCMavenWebProject.git'
             }
         }
         
-        stage('Maven Build'){
+        stage('BUILD PACKAGE'){
             steps{
-                sh "mvn clean package"
+              sh "mvn clean package"
             }
         }
         
-        stage('Docker Build'){
+        stage('EXECUTE SONARQUBE ANALYSIS'){
             steps{
-                sh "docker build . -t kammana/hariapp:${DOCKER_TAG} "
-            }
-        }
-        
-        stage('DockerHub Push'){
-            steps{
-                withCredentials([string(credentialsId: 'docker-hub', variable: 'dockerHubPwd')]) {
-                    sh "docker login -u kammana -p ${dockerHubPwd}"
-                }
+               withSonarQubeEnv(credentialsId: 'SONAR_ID',installationName:'sonarqube-server') {
+                 sh "mvn clean package sonar:sonar"
+              }
                 
-                sh "docker push kammana/hariapp:${DOCKER_TAG} "
             }
         }
         
-        stage('Docker Deploy'){
+        stage('ARTIFACT INTO NEXUS'){
             steps{
-              ansiblePlaybook credentialsId: 'dev-server', disableHostKeyChecking: true, extras: "-e DOCKER_TAG=${DOCKER_TAG}", installation: 'ansible', inventory: 'dev.inv', playbook: 'deploy-docker.yml'
+                nexusArtifactUploader artifacts: 
+             [
+                [
+               artifactId: 'maven-web-project', 
+                classifier: 'debug', 
+                file: '/var/lib/jenkins/workspace/devopsnew-smart/target/maven-web-project-5.0-SNAPSHOT.war', 
+                type: 'war'
+              ]
+              ],
+             credentialsId: 'NEXUS_ID',
+             groupId: 'com.kctechnologies',
+             nexusUrl: '35.240.144.33:8081', 
+              nexusVersion: 'nexus3', 
+             protocol: 'http', 
+              repository: 'maven2-host-rele', 
+             version: '5.0-SNAPSHOT'
+               
+                
+                    
             }
         }
-    }
-}
-
-def getVersion(){
-    def commitHash = sh label: '', returnStdout: true, script: 'git rev-parse --short HEAD'
-    return commitHash
-}
+        
+        stage('DEPLOY TO TOMCAT'){
+            steps{
+                deploy adapters: [tomcat9(credentialsId: 'TOMCAT_PWD', path: '', url: 'http://34.118.96.111:8085/')], contextPath: 'maven-web-project', war: 'target/*.war'
+            }
+        }
+        
+        stage('SEND EMAIL NOTIFICATION'){
+            steps{
+         mail bcc: 'sappoguashokrock6629@gmail.com', body: '''REGARDS
+            MR S.ASHOKKUMAR
+            ROLE-DEVOPSENGINEER
+            PROJECTTYPE-JAVABASEDPROJECT
+          ''', cc: 'cdeccmogtsrowvul', from: '', replyTo: '', subject: 'BUILD IS OVER', to: 'sappoguashok462@gmail.com'
+        }
+            
+        }
+        
+        stage('DOKCER IMAGE'){
+            steps{
+               sh "docker build -t mysmartnewcustom ."
+            }
+        }
+        
+        stage('DOCKER LOGIN AND PUSH'){
+            steps{
+                withCredentials([string(credentialsId: 'DOCKER-HUB-PWD', variable: 'DOKCERHUB')]) {
+                  sh "docker login -u ashokganidocker -p ${DOKCERHUB}"
+            }
+            sh "docker tag  mysmartnewcustom  ashokganidocker/mysmartnewcustom:latest"
+            sh "docker push ashokganidocker/mysmartnewcustom:latest"
+        }
+        }
+        
+        stage('DOCKER RUN'){
+            steps{
+                sh "docker run -d --name webserver-4 -p 8094:80 mysmartnewcustom" 
+            }
+        }
+        
+        stage('SEND SLACK NOTIFICATION'){
+            steps{
+                slackSend channel: '#newbuildnotfcation', message: 'slackSend color: "good", message: "Message from Jenkins Pipeline"'
+            }
+        }
+         
+         
+         
+     }//satgesclosed
+}//pipelineclosed
