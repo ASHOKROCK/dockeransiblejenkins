@@ -87,7 +87,7 @@ pipeline{
         
         stage('DOCKER RUN'){
             steps{
-                sh "docker run -d --name webserver-6 -p 8096:80 mysmartnewcustom" 
+                sh "docker run -d --name webserver-7 -p 8097:80 mysmartnewcustom" 
             }
         }
         
