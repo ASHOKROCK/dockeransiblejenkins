@@ -87,16 +87,15 @@ pipeline{
         
         stage('DOCKER RUN'){
             steps{
-                sh "docker run -d --name webserver-4 -p 8094:80 mysmartnewcustom" 
+                sh "docker run -d --name webserver-6 -p 8096:80 mysmartnewcustom" 
             }
         }
         
-        stage('SEND SLACK NOTIFICATION'){
+        stage ('SEND SLACK NOTIFCATION'){
             steps{
-                slackSend channel: '#newbuildnotfcation', message: 'slackSend color: "good", message: "Message from Jenkins Pipeline"'
+               slackSend channel: '#newbuildnotfcation', color: 'good', message: 'Welcome to Jenkins, Slack!', teamDomain: 'DEVTEAM', tokenCredentialId: 'SLACK_TOKEN'
             }
         }
-         
          
          
      }//satgesclosed
